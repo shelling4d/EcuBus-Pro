@@ -100,7 +100,7 @@ typedef struct _LIN_EX_MSG{
     unsigned char Data[8];      ///<数据，有效数据通过DataLen来获取
     unsigned char Check;        ///<校验,只有校验数据类型为LIN_EX_CHECK_USER的时候才需要用户传入数据
     unsigned char BreakBits;    ///<该帧的BRAK信号位数，有效值为10到26，若设置为其他值则默认为13位
-    unsigned char Reserve1;     ///<保留
+    unsigned char Reserve1;     ///<调度表模式发送数据的时候代表当前帧的发送次数
 }LIN_EX_MSG,*PLIN_EX_MSG;
 
 #ifdef __cplusplus
@@ -185,6 +185,18 @@ int WINAPI  LIN_EX_MasterWrite(int DevHandle,unsigned char LINIndex,unsigned cha
 int WINAPI  LIN_EX_MasterRead(int DevHandle,unsigned char LINIndex,unsigned char PID,unsigned char *pData);
 
 /**
+ * @brief  读取从机模式下接收到的帧或者主机模式下调度表发送的帧
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  LINIndex LIN通道号，0-LIN1，1-LIN2，2-LIN3，3-LIN4
+ * @param[out]  pLINMsg 存储数据帧缓冲区指针
+ * @param  BufSize 存储数据帧缓冲区大小
+ * @return 函数执行状态
+ * @retval >=0 成功读取到的帧数
+ * @retval <0 函数调用失败
+ */
+int WINAPI  LIN_EX_GetMsg(int DevHandle, unsigned char LINIndex, LIN_EX_MSG* pLINMsg,unsigned int BufSize);
+
+/**
  * @brief  设置从机ID模式为发送或者接收数据模式
  * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
  * @param  LINIndex LIN通道号，0-LIN1，1-LIN2，2-LIN3，3-LIN4
@@ -217,6 +229,7 @@ int WINAPI  LIN_EX_SlaveGetIDMode(int DevHandle,unsigned char LINIndex,LIN_EX_MS
  * @retval <0 函数调用失败
  */
 int WINAPI  LIN_EX_SlaveGetData(int DevHandle,unsigned char LINIndex,LIN_EX_MSG *pLINMsg);
+
 
 /**
  * @brief  控制VBAT引脚输出指定电压值
@@ -354,6 +367,16 @@ long long WINAPI LIN_EX_GetStartTime(int DevHandle, unsigned char LINIndex);
 int WINAPI LIN_EX_ResetStartTime(int DevHandle, unsigned char LINIndex);
 
 /**
+ * @brief  设置数据起始时间戳，主要用于将数据时间戳转换成实时时间用
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  LINIndex LIN通道号，0-LIN1，1-LIN2，2-LIN3，3-LIN4
+ * @param  StartTimeMs 开始记录数据的起始时间戳，该时间戳为实时时间戳
+ * @return 函数执行状态
+ * @retval <0 函数调用失败
+ */
+int WINAPI LIN_EX_SetStartTime(int DevHandle, unsigned char LINIndex,long long StartTimeMs);
+
+/**
  * @brief  停止LIN总线，调用后将关闭LIN总线的任何操作，比如数据读写，从机响应等
  * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
  * @param  LINIndex LIN通道号，0-LIN1，1-LIN2，2-LIN3，3-LIN4
@@ -367,5 +390,4 @@ int WINAPI LIN_EX_Stop(int DevHandle, unsigned char LINIndex);
 
 /** @} USB转LIN*/
 #endif
-
 

@@ -557,10 +557,19 @@ long long WINAPI CAN_GetStartTime(int DevHandle, unsigned char CANIndex);
  */
 int WINAPI CAN_ResetStartTime(int DevHandle, unsigned char CANIndex);
 
+/**
+ * @brief  设置数据起始时间戳，主要用于将数据时间戳转换成实时时间用
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  CANIndex CAN通道号，0-CAN1，1-CAN2
+ * @param  StartTimeMs 开始记录数据的起始时间戳，该时间戳为实时时间戳
+ * @return 函数执行状态
+ * @retval <0 函数调用失败
+ */
+int WINAPI CAN_SetStartTime(int DevHandle, unsigned char CANIndex, long long StartTimeMs);
+
 #ifdef __cplusplus
 }
 #endif
 
 /** @} USB转CAN*/
 #endif
-

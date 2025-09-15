@@ -97,7 +97,17 @@ int WINAPI LDF_GetFrameName(long long LDFHandle, int index, char* pFrameName);
  * @retval =0 函数执行成功
  * @retval <0 函数调用失败
  */
-int WINAPI LDF_GetFrameNameByID(long long LDFHandle, uint8_t ID, char* pFrameName);
+int WINAPI LDF_GetFrameNameByID(long long LDFHandle, unsigned char ID, char* pFrameName);
+
+/**
+ * @brief  根据帧名称获取对应ID
+ * @param  LDFHandle LDF解析句柄，通过调用 @ref LDF_ParserFile 函数获取
+ * @param[in]  pFrameName 帧名称字符串
+ * @return 函数执行状态
+ * @retval >=0 函数执行成功
+ * @retval <0 函数调用失败
+ */
+int WINAPI LDF_GetFrameIDByName(long long LDFHandle, char* pFrameName);
 
 /**
  * @brief  获取帧里面包含的信号数量
@@ -250,6 +260,7 @@ int WINAPI LDF_GetSchFrameQuantity(long long LDFHandle, char* pSchName);
  */
 int WINAPI LDF_GetSchFrameName(long long LDFHandle, char* pSchName, int index, char* pFrameName);
 
+
 /**
  * @brief  执行帧到总线，若该帧的发布者是主机，那么就是主机写数据，否则就是主机读数据
  * @param  LDFHandle LDF解析句柄，通过调用 @ref LDF_ParserFile 函数获取
@@ -295,6 +306,15 @@ int WINAPI LDF_SetSchToTable(long long LDFHandle, char* pSchName, unsigned char 
 int WINAPI LDF_GetRawMsg(long long LDFHandle, LIN_EX_MSG* pLINMsg, int BufferSize);
 
 /**
+ * @brief  停止 @ref LDF_SetSchToTable 函数启动的调度表
+ * @param  LDFHandle LDF解析句柄，通过调用 @ref LDF_ParserFile 函数获取
+ * @return 函数执行状态
+ * @retval =0 停止调度表成功
+ * @retval <0 函数调用失败
+ */
+int WINAPI LDF_StopSchTable(long long LDFHandle);
+
+/**
  * @brief  释放ldf解析相关资源，释放后LDFHandle不能再被使用了
  * @param  LDFHandle LDF解析句柄，通过调用 @ref LDF_ParserFile 函数获取
  * @return 函数执行状态
@@ -307,6 +327,5 @@ int WINAPI LDF_Release(long long LDFHandle);
 #endif
 /** @} */
 #endif
-
 
 

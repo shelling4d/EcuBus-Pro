@@ -149,7 +149,7 @@ int WINAPI PWM_Stop(int DevHandle,unsigned char ChannelMask);
  * @retval <0 函数调用失败
  * @attention PWM通道号跟PWM通道对应关系如下：
  * <table>
- * <tr><th>ChannelIndex <th>UTA0401   <th>UTA0402/UTA0403/UTA0404/UTA0405/UTA0503 <th>UTA0504 <th>UTA0101/UTA0201/UTA0301/UTA0302 </tr>
+ * <tr><th>ChannelIndex <th>UTA0401   <th>UTA0402/UTA0403/UTA0404/UTA0405/UTA0503 <th>UTA0504/UTA0505 <th>UTA0101/UTA0201/UTA0301/UTA0302 </tr>
  * <tr><td>0 <td>LIN1     <td>LIN1    <td>LIN1    <td>PWM_CH0</tr>
  * <tr><td>1 <td>无       <td>LIN2    <td>LIN2    <td>PWM_CH1</tr>
  * <tr><td>2 <td>无       <td>无      <td>LIN3    <td>PWM_CH2</tr>
@@ -207,6 +207,20 @@ int WINAPI PWM2_SetFrequency(int DevHandle, unsigned char ChannelIndex, unsigned
 int WINAPI PWM2_Stop(int DevHandle, unsigned char ChannelIndex);
 
 /**
+ * @brief  控制VBAT引脚输出指定电压值
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  ChannelIndex PWM通道索引号，具体可以参考 @ref PWM2_Init
+ * @param  VbatValue VBAT输出电压值\n
+ * @ref 0 关闭VBAT引脚电压输出，关闭输出后，VBAT引脚需要外接电压LIN才能正常工作\n
+ * @ref 1或者12 VBAT引脚输出12V\n
+ * @ref 2或者5 VBAT引脚输出5V
+ * @return 函数执行状态
+ * @retval 0 控制电压成功
+ * @retval <0 函数调用失败
+ */
+int WINAPI  PWM2_CtrlPowerOut(int DevHandle, unsigned char ChannelIndex, unsigned char VbatValue);
+
+/**
  * @brief  PWM监控初始化，PWM频率=1000000/((PWMData.LowValue+PWMData.HighValue)*TimePrecUs)，PWM占空比=PWMData.HighValue/(PWMData.LowValue+PWMData.HighValue)
  * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
  * @param  Channel 监控通道号，0-LIN1，1-LIN2
@@ -254,4 +268,3 @@ int WINAPI PWM_CAP_Stop(int DevHandle, unsigned char Channel);
 
 /** @} USB转PWM*/
 #endif
-

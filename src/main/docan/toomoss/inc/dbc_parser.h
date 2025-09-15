@@ -79,7 +79,17 @@ int WINAPI DBC_GetMsgName(long long DBCHandle, int index, char* pMsgName);
  * @retval =0 函数执行成功
  * @retval <0 函数调用失败
  */
-int WINAPI DBC_GetMsgNameByID(long long DBCHandle, uint32_t ID, char* pMsgName);
+int WINAPI DBC_GetMsgNameByID(long long DBCHandle, unsigned int ID, char* pMsgName);
+
+/**
+ * @brief  通过消息名称获取帧ID
+ * @param  DBCHandle DBC解析句柄，通过调用 @ref DBC_ParserFile 函数获取
+ * @param[in]  pMsgName 消息名称字符串
+ * @return 函数执行状态
+ * @retval >=0 函数执行成功,返回值为当前消息对应的ID
+ * @retval <0 函数调用失败
+ */
+int WINAPI DBC_GetMsgIDByName(long long DBCHandle, char* pMsgName);
 
 /**
  * @brief  获取帧里面包含的信号数量
@@ -196,6 +206,5 @@ int WINAPI DBC_SyncValueToCANFDMsg(long long DBCHandle, char* pMsgName, void* pC
 #endif
 /** @} */
 #endif
-
 
 

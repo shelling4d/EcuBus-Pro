@@ -72,7 +72,7 @@ typedef struct _UART_CONFIG{
  *@brief 奇偶校验位定义
  *@{
 */
-#define UART_PARITY_NO            0
+#define UART_PARITY_NONE          0
 #define UART_PARITY_EVEN          4
 #define UART_PARITY_ODD           6
 /** @} */
@@ -124,6 +124,19 @@ int WINAPI UART_Init(int DevHandle, unsigned char Channel, PUART_CONFIG pConfig)
 int WINAPI UART_WriteBytes(int DevHandle,unsigned char Channel,unsigned char *pWriteData,int DataSize);
 
 /**
+ * @brief  发送UART数据，发送数据前会发送同步间隔信号，该函数为阻塞函数，数据发送完毕后函数才会返回
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  Channel UART通道号，从0开始编号
+ * @param  BreakLen 同步间隔宽度，0-不发送，10~26-发送指定位宽同步间隔
+ * @param  pWriteData 待发送的数据字节数组指针
+ * @param  DataSize 待发送的数据字节数
+ * @return 函数执行状态
+ * @retval =0 函数执行成功
+ * @retval <0 函数调用失败
+ */
+int WINAPI UART_WriteBytesWithBreak(int DevHandle, unsigned char Channel, unsigned char BreakLen, unsigned char* pWriteData, int DataSize);
+
+/**
  * @brief  发送UART数据，该函数为非阻塞函数，调用后数据会先缓存到适配器，然后立即返回，适配器继续发送数据
  * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
  * @param  Channel UART通道号，从0开始编号
@@ -134,6 +147,36 @@ int WINAPI UART_WriteBytes(int DevHandle,unsigned char Channel,unsigned char *pW
  * @retval <0 函数调用失败
  */
 int WINAPI UART_WriteBytesAsync(int DevHandle,unsigned char Channel,unsigned char *pWriteData,int DataSize);
+
+/**
+ * @brief  发送UART数据，发送数据前会先发送同步间隔信号，该函数为非阻塞函数，调用后数据会先缓存到适配器，然后立即返回，适配器继续发送数据
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  Channel UART通道号，从0开始编号
+ * @param  BreakLen 同步间隔宽度，0-不发送，10~26-发送指定位宽同步间隔
+ * @param  pWriteData 待发送的数据字节数组指针
+ * @param  DataSize 待发送的数据字节数
+ * @return 函数执行状态
+ * @retval =0 函数执行成功
+ * @retval <0 函数调用失败
+ */
+int WINAPI UART_WriteBytesAsyncWithBreak(int DevHandle, unsigned char Channel, unsigned char BreakLen, unsigned char* pWriteData, int DataSize);
+
+/**
+ * @brief  发送读取UART数据，发送完数据后会按照设定读取指定字节数数据，除非超时为止
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  Channel UART通道号，从0开始编号
+ * @param  BreakLen 同步间隔宽度，0-不发送，10~26-发送指定位宽同步间隔
+ * @param  pWriteData 待发送的数据字节数组指针
+ * @param  WriteSize 待发送的数据字节数
+ * @param  pReadData 存储读取数据的字节数组指针
+ * @param  ReadSize 待读取的数据字节数
+ * @param  TimeOutMs 等待读取数据的超时时间，单位为毫秒
+ * @return 函数执行状态
+ * @retval >=0 函数执行成功,大于0表示实际读到的有效数据字节数
+ * @retval <0 函数调用失败
+ */
+int WINAPI UART_WriteReadBytesWithBreak(int DevHandle, unsigned char Channel, unsigned char BreakLen, unsigned char* pWriteData, int WriteSize, unsigned char* pReadData, int ReadSize, int TimeOutMs);
+
 /**
  * @brief  根据设定的字节间隔发送数据，该函数为阻塞函数，数据发送完毕后才会返回
  * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
@@ -187,4 +230,3 @@ int WINAPI UART_ClearData(int DevHandle,unsigned char Channel);
 #endif
 /** @} USB转LIN*/
 #endif
-

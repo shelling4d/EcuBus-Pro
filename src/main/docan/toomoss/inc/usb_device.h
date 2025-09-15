@@ -257,6 +257,38 @@ unsigned char WINAPI DEV_GetTimestamp(int DevHandle,char BusType,unsigned int *p
   */
 unsigned char WINAPI DEV_ResetTimestamp(int DevHandle);
 
+/**
+ * @brief  擦出调度表区数据
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  Addr 调度表数据起始地址
+ * @return 函数执行状态
+ * @retval 0 数据擦除失败
+ * @retval 1 数据擦除成功
+ */
+unsigned char WINAPI DEV_EraseSchData(int DevHandle,unsigned int Addr);
+/**
+ * @brief  写调度表数据到用户存储区
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  OffsetAddr 数据写入起始地址
+ * @param[in]  pWriteData 数据缓冲区指针
+ * @param  DataLen 写入数据字节数
+ * @return 写入数据状态
+ * @retval 0 写入数据失败
+ * @retval 1 写入数据成功
+ */
+unsigned char WINAPI DEV_WriteSchData(int DevHandle,int OffsetAddr,unsigned char *pWriteData,int DataLen);
+
+/**
+ * @brief  读取调度表数据
+ * @param  DevHandle 设备号，通过调用 @ref USB_ScanDevice 获取
+ * @param  OffsetAddr 读数据起始地址
+ * @param[out]  pReadData 存储读数据缓冲区指针
+ * @param  DataLen 读数据字节数
+ * @return 读数据状态
+ * @retval 0 读数据失败
+ * @retval 1 读数据成功
+ */
+unsigned char WINAPI DEV_ReadSchData(int DevHandle,int OffsetAddr,unsigned char *pReadData,int DataLen);
 
 /**
  * @brief  获取当前库编译日期和时间
@@ -273,5 +305,4 @@ unsigned char WINAPI DEV_GetDllBuildTime(char* pDateTime);
 
 /** @} usb_device*/
 #endif
-
 
