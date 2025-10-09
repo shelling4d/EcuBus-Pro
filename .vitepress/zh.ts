@@ -19,7 +19,8 @@ export const zh = defineConfig({
       next: '下一页'
     },
     outline: {
-      label: '页面导航'
+      label: '页面导航',
+      level: [2, 4]
     },
     lastUpdated: {
       text: '最后更新于',
@@ -77,9 +78,20 @@ function sidebar(): DefaultTheme.SidebarItem[] {
         },
         { text: 'CAN', link: '/zh/docs/um/can/can' },
         { text: 'LIN', link: '/zh/docs/um/lin/lin' },
+        { text: 'PWM', link: '/zh/docs/um/pwm/pwm' },
         { text: 'Network', items: [{ text: '日志记录器', link: '/zh/docs/um/network/logger' }] },
         { text: '脚本', items: [{ text: 'CAPL->TS', link: '/zh/docs/um/script/capl2ts' }] },
-        { text: 'SOME/IP', link: '/zh/docs/um/someip/index' }
+        { text: 'SOME/IP', link: '/zh/docs/um/someip/index' },
+        {
+          text: '诊断',
+          items: [
+            { text: '内建脚本', link: '/zh/docs/um/uds/buildInScript/buildInScript' },
+            { text: 'Tester Present', link: '/zh/docs/um/uds/testerPresent/testerPresent' },
+            { text: 'UDS转C代码', link: '/zh/docs/um/uds/udscode/udscode' },
+            { text: 'UDS Bootloader实现指南', link: '/zh/docs/um/uds/example/example' }
+          ]
+        },
+        { text: 'OSEK OS追踪', link: '/zh/docs/um/osTrace/index' }
       ]
     },
     {
@@ -95,7 +107,8 @@ function sidebar(): DefaultTheme.SidebarItem[] {
           text: 'LIN',
           items: [
             { text: 'LIN一致性测试', link: 'lin_conformance_test/readme.md' },
-            { text: 'LIN UDS', link: 'NSUC1612_LIN_OTA/readme.md' }
+            { text: 'LIN UDS', link: 'NSUC1612_LIN_OTA/readme.md' },
+            { text: 'LIN 自动寻址', link: 'lin_aa/readme.md' }
           ],
           collapsed: false
         },

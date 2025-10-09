@@ -4,6 +4,7 @@ import type { TesterInfo } from 'src/main/share/tester'
 import type { LDF } from 'src/renderer/src/database/ldfParse'
 import type { DBC } from 'src/renderer/src/database/dbc/dbcVisitor'
 import type { SomeipInfo, SomeipMessageType } from 'nodeCan/someip'
+import type { ORTIFile } from 'src/renderer/src/database/ortiParse'
 
 import type { YAXisOption, XAXisOption, LineSeriesOption, GaugeSeriesOption } from 'echarts'
 
@@ -28,7 +29,6 @@ export interface VarValueString {
   type: 'string'
   value?: string
   initValue?: string
-  enum?: { name: string; value: string }[]
 }
 
 export interface VarValueArray {
@@ -63,6 +63,7 @@ export interface PwmInter {
 }
 
 export interface SomeipAction {
+  uuid: string
   trigger: {
     type: 'manual' | 'periodic'
     period?: number
@@ -109,6 +110,7 @@ export type GraphBindSignalValue = {
   frameId: number
   startBit: number
   bitLength: number
+  stringRange?: { name: string; value: number }[]
 }
 
 export type GraphBindFrameValue = {
@@ -121,6 +123,8 @@ export type GraphBindVariableValue = {
   variableType: 'user' | 'system'
   variableName: string
   variableFullName: string
+  variableValueType?: 'number' | 'string' | 'array'
+  stringRange?: { name: string; value: number }[]
 }
 
 export type GraphNode<T, S = any> = {
@@ -134,7 +138,9 @@ export type GraphNode<T, S = any> = {
   disZoom?: boolean
   yAxis?: YAXisOption
   xAxis?: XAXisOption
-
+  tooltip?: {
+    show: boolean
+  }
   series?: S
   type: 'signal' | 'variable' | 'frame'
   bindValue: T
@@ -158,6 +164,14 @@ export type LogItem = {
   method: string[]
 }
 
+export type TraceItem = {
+  id: string
+  name: string
+  filter?: string[]
+  filterDevice?: string[]
+  filterId?: string[]
+}
+
 export interface DataSet {
   devices: Record<string, UdsDevice>
   tester: Record<string, TesterInfo>
@@ -167,6 +181,7 @@ export interface DataSet {
   database: {
     lin: Record<string, LDF>
     can: Record<string, DBC>
+    orti: Record<string, ORTIFile>
   }
   graphs: Record<string, GraphNode<GraphBindSignalValue | GraphBindVariableValue, LineSeriesOption>>
   guages: Record<
@@ -177,4 +192,5 @@ export interface DataSet {
   vars: Record<string, VarItem>
   panels: Record<string, PanelItem>
   logs: Record<string, LogItem>
+  traces: Record<string, TraceItem>
 }

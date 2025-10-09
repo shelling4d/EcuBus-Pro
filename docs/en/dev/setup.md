@@ -11,7 +11,7 @@ You can get detail setup steps from [Detail Windows Setup Guide](./detialSetup.m
 
 ## Prerequisites
 
-- Node.js (v20 or higher)
+- Node.js (v22)
 - npm
 - Node-gyp
 
@@ -32,13 +32,7 @@ npm install
 `build native module`
 
 ```bash
-cd src/main/docan
-npx node-gyp rebuild
-cd ../..
-
-cd src/main/dolin
-npx node-gyp rebuild
-cd ../..
+npm run native
 ```
 
 `run`

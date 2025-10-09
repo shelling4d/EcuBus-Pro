@@ -162,11 +162,12 @@
                   ref="repParamRef"
                   v-model="model.params"
                   :parent-id="editIndex"
+                  :sub-function="model.suppress"
                   :disabled="serviceDetail[model.serviceId].fixedParam"
                   :sid="model.id"
                   :service-id="model.serviceId"
                   :other-service="serviceList[model.serviceId]"
-                  @change="reqParamChange"
+                  @change="suppressChange"
                 />
               </el-tab-pane>
               <el-tab-pane
@@ -182,11 +183,12 @@
                   ref="respParamRef"
                   v-model="model.respParams"
                   :parent-id="editIndex"
+                  :sub-function="model.suppress"
                   :sid="model.id"
                   :service-id="model.serviceId"
                   :disabled="model.autoSubfunc"
                   :other-service="serviceList[model.serviceId]"
-                  @change="reqParamChange"
+                  @change="suppressChange"
                 />
               </el-tab-pane>
               <el-tab-pane
@@ -326,6 +328,7 @@ function nodeClick(data: any) {
   } else {
     activeService.value = ''
   }
+  activeName.value = 'request'
 }
 
 function removeService(serviceId: ServiceId, id: string) {
@@ -694,12 +697,15 @@ watch(
   { deep: true, immediate: true }
 )
 
-function suppressChange(val) {
-  const lastVal = model.value.params[0].value[0]
-  if (val) {
-    paramSetVal(model.value.params[0], lastVal | 0x80)
-  } else {
-    paramSetVal(model.value.params[0], lastVal & 0x7f)
+function suppressChange() {
+  if (model.value.serviceId.startsWith('0x')) {
+    const lastVal = model.value.params[0].value[0]
+    if (model.value.suppress) {
+      activeName.value = 'request'
+      paramSetVal(model.value.params[0], lastVal | 0x80)
+    } else {
+      paramSetVal(model.value.params[0], lastVal & 0x7f)
+    }
   }
   reqParamChange()
 }
@@ -1031,4 +1037,3 @@ onMounted(() => {
   width: v-bind(leftWidth - 100 + 'px') !important;
 }
 </style>
-

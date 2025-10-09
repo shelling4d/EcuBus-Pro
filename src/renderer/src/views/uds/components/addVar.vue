@@ -1,6 +1,11 @@
 <template>
   <div style="margin-top: -5px">
-    <VxeGrid v-bind="gridOptions" ref="vxeRef" @cell-click="handleCellClick">
+    <VxeGrid
+      v-bind="gridOptions"
+      ref="vxeRef"
+      class="add-var-grid"
+      @checkbox-change="handleCellClick"
+    >
       <template #toolbar>
         <div
           style="
@@ -39,8 +44,11 @@
           </el-tooltip>
           <el-divider direction="vertical" />
           <el-tooltip effect="light" content="Add Variable" placement="bottom">
-            <el-button type="primary" link :disabled="!highlightedRow" @click="addVariable">
+            <el-button type="primary" link :disabled="!highlightedRows.length" @click="addVariable">
               <Icon :icon="variableIcon" style="font-size: 14px" />
+              <span v-if="highlightedRows.length" style="margin-left: 4px; font-size: 12px">
+                ({{ highlightedRows.length }})
+              </span>
             </el-button>
           </el-tooltip>
           <el-tooltip
@@ -91,6 +99,7 @@ interface TreeItem {
     min?: number
     max?: number
     unit?: string
+    enum?: { name: string; value: number }[]
   }
   desc?: string
 }
@@ -103,14 +112,17 @@ const props = defineProps<{
 
 const database = useDataStore()
 
-const highlightedRow = ref<TreeItem | null>(null)
+const highlightedRows = ref<TreeItem[]>([])
 const isExpanded = ref(false)
 
 const searchText = ref('')
 const allVariables = computed(() => {
   const variables: TreeItem[] = []
   const variableMap = new Map<string, TreeItem>()
-  const sysVars = Object.values(getAllSysVar(database.devices, database.tester))
+  const sysVars = Object.values(
+    getAllSysVar(database.devices, database.tester, database.database.orti)
+  )
+
   const allList = [...Object.values(database.vars), ...sysVars]
   // 先创建所有用户变量节点
   for (const varItem of allList) {
@@ -142,26 +154,51 @@ const allVariables = computed(() => {
   return variables
 })
 
-const gridOptions = computed<VxeGridProps<TreeItem>>(() => ({
+const gridOptions = computed<any>(() => ({
   border: true,
   height: props.height,
+
   size: 'mini',
   treeConfig: {
     rowField: 'id',
     childrenField: 'children',
     expandAll: false
   },
+  checkboxConfig: {
+    highlight: true,
+    showHeader: false,
+    labelField: 'name',
+    visibleMethod: ({ row }) => {
+      return false
+    },
+    checkMethod: ({ row }) => {
+      return row.value
+    },
+    trigger: 'row'
+  },
   rowConfig: {
-    keyField: 'id',
-    isCurrent: true
+    keyField: 'id'
+    // isCurrent: true
   },
   toolbarConfig: {
     slots: {
       tools: 'toolbar'
     }
   },
+  columnConfig: {
+    resizable: true
+  },
   columns: [
-    { field: 'type', title: '', width: 40, slots: { default: 'type' } },
+    // { type: 'checkbox', title: 'type', minWidth: 40, align: 'center'},
+    {
+      type: 'checkbox',
+      field: 'type',
+      title: '',
+      width: 32,
+      slots: { default: 'type' },
+      resizable: false
+    },
+
     { field: 'name', title: 'Name', minWidth: 200, treeNode: true },
     { field: 'value.type', title: 'Type', width: 100 },
     { field: 'value.initValue', title: 'Init Value', width: 100 },
@@ -173,14 +210,8 @@ const gridOptions = computed<VxeGridProps<TreeItem>>(() => ({
   data: allVariables.value
 }))
 
-function handleCellClick({ row }: { row: TreeItem }) {
-  if (row.value) {
-    highlightedRow.value = row
-  } else {
-    //clearCurrentRow
-    vxeRef.value?.clearCurrentRow()
-    highlightedRow.value = null
-  }
+function handleCellClick() {
+  highlightedRows.value = vxeRef.value.getCheckboxRecords().filter((row: TreeItem) => row.value)
 }
 
 function toggleExpand() {
@@ -207,43 +238,49 @@ function removeSignal() {
   emits('addVariable', null)
 }
 function addVariable() {
-  if (!highlightedRow.value) return
-  const fullNameList: string[] = [highlightedRow.value.name]
-  let parent = highlightedRow.value.parentId
-  while (parent) {
-    const parentInfo = database.vars[parent]
-    if (parentInfo) {
-      fullNameList.unshift(parentInfo.name)
-      parent = parentInfo.parentId
-    } else {
-      const sysVarInfo = getAllSysVar(database.devices, database.tester)[parent]
-      if (sysVarInfo) {
-        fullNameList.unshift(sysVarInfo.name)
-        parent = sysVarInfo.parentId
+  if (!highlightedRows.value.length) return
+  for (const row of highlightedRows.value) {
+    const fullNameList: string[] = [row.name]
+    let parent = row.parentId
+    while (parent) {
+      const parentInfo = database.vars[parent]
+      if (parentInfo) {
+        fullNameList.unshift(parentInfo.name)
+        parent = parentInfo.parentId
       } else {
-        break
+        const sysVarInfo = getAllSysVar(database.devices, database.tester, database.database.orti)[
+          parent
+        ]
+        if (sysVarInfo) {
+          fullNameList.unshift(sysVarInfo.name)
+          parent = sysVarInfo.parentId
+        } else {
+          break
+        }
       }
     }
-  }
 
-  emits('addVariable', {
-    type: 'variable',
-    enable: true,
-    id: highlightedRow.value.id,
-    name: highlightedRow.value.name,
-    color: randomColor(),
-    yAxis: {
-      min: highlightedRow.value.value?.min || 0,
-      max: highlightedRow.value.value?.max || 100,
-      unit: highlightedRow.value.value?.unit
-    },
-    bindValue: {
-      variableId: highlightedRow.value.id,
-      variableType: highlightedRow.value.type,
-      variableName: highlightedRow.value.name,
-      variableFullName: fullNameList.join('.')
-    }
-  })
+    emits('addVariable', {
+      type: 'variable',
+      enable: true,
+      id: row.id,
+      name: row.name,
+      color: randomColor(),
+      yAxis: {
+        min: row.value?.min || 0,
+        max: row.value?.max || 100,
+        unit: row.value?.unit
+      },
+      bindValue: {
+        variableId: row.id,
+        variableType: row.type,
+        variableName: row.name,
+        variableFullName: fullNameList.join('.'),
+        variableValueType: row.value?.type as 'number' | 'string' | 'array',
+        stringRange: row.value?.enum
+      }
+    })
+  }
 }
 
 // 添加一个辅助函数来处理ID匹配
@@ -263,15 +300,10 @@ function filterTreeData(
       if (count >= MAX_SEARCH_RESULTS) return null
 
       const newItem = { ...item }
-      if (item.children && item.children.length) {
-        const result = filterTreeData(item.children, searchText)
-        newItem.children = result.items
-        count += result.count
-      }
 
-      const matches =
+      // 检查当前节点是否匹配
+      const currentMatches =
         item.name.toLowerCase().includes(searchText) ||
-        (newItem.children && newItem.children.length > 0) ||
         item.value?.type?.toLowerCase().includes(searchText) ||
         String(item.value?.initValue).toLowerCase().includes(searchText) ||
         String(item.value?.min).includes(searchText) ||
@@ -279,11 +311,29 @@ function filterTreeData(
         item.value?.unit?.toLowerCase().includes(searchText) ||
         matchesId(searchText, item.id)
 
-      if (matches) {
+      // 如果当前节点匹配，保留所有子节点
+      if (currentMatches) {
         count++
+        // 保持原有的子节点结构不变
+        if (item.children && item.children.length) {
+          newItem.children = item.children
+        }
+        return newItem
       }
 
-      return matches ? newItem : null
+      // 如果当前节点不匹配，递归过滤子节点
+      if (item.children && item.children.length) {
+        const result = filterTreeData(item.children, searchText)
+        newItem.children = result.items
+        count += result.count
+
+        // 如果有子节点匹配，保留当前节点
+        if (newItem.children.length > 0) {
+          return newItem
+        }
+      }
+
+      return null
     })
     .filter(Boolean) as TreeItem[]
 
@@ -363,10 +413,12 @@ onMounted(() => {
 .row-highlight {
   background-color: #e6f3ff !important;
 }
+.vxe-table--render-default .vxe-body--row.row--checked > .vxe-body--column {
+  background-color: #e6f3ff !important;
+}
 
 :deep(.vxe-toolbar) {
   background-color: var(--el-fill-color-light);
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 </style>
-

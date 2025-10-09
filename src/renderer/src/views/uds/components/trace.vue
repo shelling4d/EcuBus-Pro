@@ -45,7 +45,11 @@
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-checkbox-group v-model="checkList" size="small" style="margin: 10px; width: 150px">
+            <el-checkbox-group
+              v-model="trace.filter"
+              size="small"
+              style="margin: 10px; width: 100px"
+            >
               <el-checkbox
                 v-for="item of LogFilter"
                 :key="item.v"
@@ -58,7 +62,7 @@
         </template>
       </el-dropdown>
       <el-select
-        v-model="instanceList"
+        v-model="trace.filterDevice"
         size="small"
         style="width: 200px; margin: 4px; margin-left: 6px"
         multiple
@@ -69,7 +73,7 @@
         <el-option v-for="item of allInstanceList" :key="item" :label="item" :value="item" />
       </el-select>
       <el-select
-        v-model="idFilterList"
+        v-model="trace.filterId"
         size="small"
         style="width: 300px; margin: 4px"
         multiple
@@ -95,6 +99,17 @@
           </el-dropdown-menu>
         </template>
       </el-dropdown>
+      <el-dropdown size="small" @command="othersFeature">
+        <el-button type="info" link>
+          <Icon :icon="othersIcon" />
+        </el-button>
+
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="changeName">Change Name</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
     <div :id="`traceTable-${props.editIndex}`" class="realLog"></div>
   </div>
@@ -103,6 +118,7 @@
 import {
   ref,
   onMounted,
+  onBeforeMount,
   onUnmounted,
   computed,
   toRef,
@@ -111,7 +127,8 @@ import {
   PropType,
   nextTick,
   handleError,
-  Ref
+  Ref,
+  inject
 } from 'vue'
 
 import { CAN_ID_TYPE, CanMessage, CanMsgType, getDlcByLen } from 'nodeCan/can'
@@ -132,13 +149,14 @@ import playIcon from '@iconify/icons-material-symbols/play-circle-outline'
 import switchIcon from '@iconify/icons-material-symbols/cameraswitch-outline-rounded'
 import scrollIcon1 from '@iconify/icons-material-symbols/autoplay'
 import scrollIcon2 from '@iconify/icons-material-symbols/autopause'
+import othersIcon from '@iconify/icons-material-symbols/more-horiz'
 import ExcelJS from 'exceljs'
 
 import { ServiceItem, Sequence, getTxPduStr, getTxPdu } from 'nodeCan/uds'
 import { useDataStore } from '@r/stores/data'
 import { LinDirection, LinMsg } from 'nodeCan/lin'
 import EVirtTable, { Column } from 'e-virt-table'
-import { ElLoading } from 'element-plus'
+import { ElLoading, ElMessageBox } from 'element-plus'
 import { useGlobalStart } from '@r/stores/runtime'
 import {
   SomeipMessageType,
@@ -146,6 +164,9 @@ import {
   VsomeipAvailabilityInfo,
   SomeipMessage
 } from 'nodeCan/someip'
+import { TraceItem } from 'src/preload/data'
+import { cloneDeep } from 'lodash'
+import { Layout } from '../layout'
 let allLogData: LogData[] = []
 
 interface LogData {
@@ -180,7 +201,33 @@ function toggleOverwrite() {
   }
 }
 const database = useDataStore()
-const instanceList = ref<string[]>([])
+
+function othersFeature(command: string) {
+  if (command == 'changeName') {
+    ElMessageBox.prompt('Please enter the new name', 'Change Name', {
+      confirmButtonText: 'OK',
+      cancelButtonText: 'Cancel',
+      buttonSize: 'small',
+      appendTo: `#win${props.editIndex}`,
+      inputValue: trace.value.name,
+
+      inputValidator: (val: string) => {
+        if (val) {
+          return true
+        } else {
+          return "Name can't be empty"
+        }
+      }
+    })
+      .then(({ value }) => {
+        trace.value.name = value
+        layout.changeWinName(props.editIndex, trace.value.name)
+      })
+      .catch(() => {
+        null
+      })
+  }
+}
 const allInstanceList = computed(() => {
   const list: string[] = []
   for (const item of Object.values(database.devices)) {
@@ -196,7 +243,7 @@ const allInstanceList = computed(() => {
 })
 
 // ID filter functionality
-const idFilterList = ref<string[]>([])
+
 const idList = ref<Set<string>>(new Set())
 
 function addToIdList(id: string) {
@@ -262,6 +309,22 @@ interface LinErrorLog {
   data: { msg: string; ts: number; data?: LinMsg }
 }
 
+interface OsEventLog {
+  method: 'osEvent'
+  data: {
+    data: string
+    name: string
+    id: string
+    ts: number
+  }
+}
+
+interface OsErrorLog {
+  method: 'osError'
+  error: string
+  ts: number
+}
+
 interface LogItem {
   message:
     | CanBaseLog
@@ -272,6 +335,8 @@ interface LogItem {
     | LinErrorLog
     | SomeipBaseLog
     | SomeipServiceValidLog
+    | OsEventLog
+    | OsErrorLog
   level: string
   instance: string
   label: string
@@ -346,7 +411,7 @@ function insertData2(data: LogData[]) {
 
           // Store previous timestamp and delta time
           item.previousTs = existingLog.ts
-          item.deltaTime = deltaMs >= 0 ? `(Δ${deltaMs.toFixed(1)}ms)` : ''
+          item.deltaTime = deltaMs >= 0 ? `(Δ${deltaMs.toFixed(3)}ms)` : ''
 
           allLogData[idx] = item
         } else {
@@ -389,7 +454,7 @@ function logDisplay(method: string, vals: LogItem[]) {
     addToIdList(data.id)
 
     // Apply ID filtering
-    if (idFilterList.value.length && data.id && !idFilterList.value.includes(data.id)) {
+    if (trace.value.filterId!.length && data.id && !trace.value.filterId!.includes(data.id)) {
       return
     }
 
@@ -401,14 +466,18 @@ function logDisplay(method: string, vals: LogItem[]) {
     logData.push(data)
   }
   for (const val of vals) {
-    if (instanceList.value.length && val.instance && !instanceList.value.includes(val.instance))
+    if (
+      trace.value.filterDevice!.length &&
+      val.instance &&
+      !trace.value.filterDevice!.includes(val.instance)
+    )
       continue
     if (val.message.method == 'canBase') {
       insertData({
         method: val.message.method,
         dir: val.message.data.dir == 'OUT' ? 'Tx' : 'Rx',
         data: data2str(val.message.data.data),
-        ts: ((val.message.data.ts || 0) / 1000000).toFixed(3),
+        ts: ((val.message.data.ts || 0) / 1000000).toFixed(6),
         id: '0x' + val.message.data.id.toString(16),
         dlc: getDlcByLen(val.message.data.data.length, val.message.data.msgType.canfd),
         len: val.message.data.data.length,
@@ -423,7 +492,7 @@ function logDisplay(method: string, vals: LogItem[]) {
         method: val.message.method,
         dir: val.message.data.dir == 'OUT' ? 'Tx' : 'Rx',
         data: data2str(val.message.data.data),
-        ts: (val.message.data.ts / 1000000).toFixed(3),
+        ts: (val.message.data.ts / 1000000).toFixed(6),
         id: `${val.message.data.local}=>${val.message.data.remote}`,
         dlc: val.message.data.data.length,
         len: val.message.data.data.length,
@@ -437,7 +506,7 @@ function logDisplay(method: string, vals: LogItem[]) {
         method: val.message.method,
         dir: val.message.data.direction == LinDirection.SEND ? 'Tx' : 'Rx',
         data: data2str(val.message.data.data),
-        ts: ((val.message.data.ts || 0) / 1000000).toFixed(3),
+        ts: ((val.message.data.ts || 0) / 1000000).toFixed(6),
         id: '0x' + val.message.data.frameId.toString(16),
         len: val.message.data.data.length,
         device: val.label,
@@ -458,7 +527,7 @@ function logDisplay(method: string, vals: LogItem[]) {
         dir: 'Tx',
         name: testerName,
         data: `${data2str(val.message.data.recvData ? val.message.data.recvData : new Uint8Array(0))}`.trim(),
-        ts: (val.message.data.ts / 1000000).toFixed(3),
+        ts: (val.message.data.ts / 1000000).toFixed(6),
         id: testerName,
         len: val.message.data.recvData ? val.message.data.recvData.length : 0,
         device: val.label,
@@ -484,7 +553,7 @@ function logDisplay(method: string, vals: LogItem[]) {
         dir: 'Rx',
         name: testerName,
         data: `${data2str(val.message.data.recvData ? val.message.data.recvData : new Uint8Array(0))}`.trim(),
-        ts: (val.message.data.ts / 1000000).toFixed(3),
+        ts: (val.message.data.ts / 1000000).toFixed(6),
         id: testerName,
         len: val.message.data.recvData ? val.message.data.recvData.length : 0,
         device: val.label,
@@ -499,7 +568,7 @@ function logDisplay(method: string, vals: LogItem[]) {
         method: val.message.method,
         name: '',
         data: val.message.data.msg,
-        ts: (val.message.data.ts / 1000000).toFixed(3),
+        ts: (val.message.data.ts / 1000000).toFixed(6),
         id: 'canError',
         len: 0,
         device: val.label,
@@ -516,7 +585,7 @@ function logDisplay(method: string, vals: LogItem[]) {
           method: method,
           name: val.message.data.data.name,
           data: val.message.data.msg,
-          ts: (val.message.data.ts / 1000000).toFixed(3),
+          ts: (val.message.data.ts / 1000000).toFixed(6),
           id: '0x' + val.message.data.data.frameId?.toString(16),
           len: val.message.data.data.data.length,
           dlc: val.message.data.data.data.length,
@@ -530,7 +599,7 @@ function logDisplay(method: string, vals: LogItem[]) {
           method: val.message.method,
           name: '',
           data: val.message.data.msg,
-          ts: (val.message.data.ts / 1000000).toFixed(3),
+          ts: (val.message.data.ts / 1000000).toFixed(6),
           id: 'linError',
           len: 0,
           device: val.label,
@@ -543,7 +612,7 @@ function logDisplay(method: string, vals: LogItem[]) {
         method: val.message.method,
         name: '',
         data: val.message.data.msg,
-        ts: (val.message.data.ts / 1000000).toFixed(3),
+        ts: (val.message.data.ts / 1000000).toFixed(6),
         id: 'linEvent',
         len: 0,
         device: val.label,
@@ -555,7 +624,7 @@ function logDisplay(method: string, vals: LogItem[]) {
         method: val.message.method,
         name: '',
         data: val.message.data.msg,
-        ts: (val.message.data.ts / 1000000).toFixed(3),
+        ts: (val.message.data.ts / 1000000).toFixed(6),
         id: 'udsScript',
         len: 0,
         device: val.label,
@@ -567,7 +636,7 @@ function logDisplay(method: string, vals: LogItem[]) {
         method: val.message.method,
         name: '',
         data: val.message.data.msg,
-        ts: (val.message.data.ts / 1000000).toFixed(3),
+        ts: (val.message.data.ts / 1000000).toFixed(6),
         id: 'udsSystem',
         len: 0,
         device: val.label,
@@ -602,7 +671,7 @@ function logDisplay(method: string, vals: LogItem[]) {
         method: val.message.method,
         name: `Client:0x${val.message.data.client.toString(16).padStart(4, '0')} Session:0x${val.message.data.session.toString(16).padStart(4, '0')}`,
         data: data2str(val.message.data.payload),
-        ts: (val.message.data.ts / 1000000).toFixed(3),
+        ts: (val.message.data.ts / 1000000).toFixed(6),
         id: `SID:0x${val.message.data.service.toString(16).padStart(4, '0')} IID:0x${val.message.data.instance.toString(16).padStart(4, '0')} MID:0x${val.message.data.method.toString(16).padStart(4, '0')}`,
         len: val.message.data.payload.length,
         dlc: val.message.data.payload.length,
@@ -616,12 +685,37 @@ function logDisplay(method: string, vals: LogItem[]) {
       insertData({
         method: val.message.method,
         data: `Service:0x${val.message.data.info.service.toString(16).padStart(4, '0')} Instance:0x${val.message.data.info.instance.toString(16).padStart(4, '0')} Available:${val.message.data.info.available}`,
-        ts: (val.message.data.ts / 1000000).toFixed(3),
+        ts: (val.message.data.ts / 1000000).toFixed(6),
         id: '',
         len: 0,
         device: val.label,
         channel: val.instance,
         msgType: 'SomeIP Service Valid'
+      })
+    } else if (val.message.method == 'osEvent') {
+      insertData({
+        method: val.message.method,
+
+        data: val.message.data.data,
+        ts: (val.message.data.ts / 1000000).toFixed(6),
+        name: val.message.data.name,
+        id: val.message.data.id,
+        len: 0,
+        device: val.label,
+        channel: val.instance,
+        msgType: 'OS Event'
+      })
+    } else if (val.message.method == 'osError') {
+      insertData({
+        method: val.message.method,
+        name: '',
+        data: val.message.error,
+        ts: (val.message.ts / 1000000).toFixed(6),
+        id: 'osError',
+        len: 0,
+        device: val.label,
+        channel: val.instance,
+        msgType: 'OS Error'
       })
     }
   }
@@ -646,15 +740,12 @@ const props = defineProps({
   },
   defaultCheckList: {
     type: Array as PropType<string[]>,
-    default: () => ['canBase', 'ipBase', 'linBase', 'uds', 'someipBase']
+    default: () => ['canBase', 'ipBase', 'linBase', 'uds', 'someipBase', 'osTrace']
   }
 })
 
-// Initialize checkList with the prop value
-const checkList = ref(props.defaultCheckList)
-
 function filterChange(
-  method: 'uds' | 'canBase' | 'ipBase' | 'linBase' | 'someipBase',
+  method: 'uds' | 'canBase' | 'ipBase' | 'linBase' | 'someipBase' | 'osTrace',
   val: boolean
 ) {
   const i = LogFilter.value.find((v) => v.v == method)
@@ -871,7 +962,7 @@ function togglePause() {
 const LogFilter = ref<
   {
     label: string
-    v: 'uds' | 'canBase' | 'ipBase' | 'linBase' | 'someipBase'
+    v: 'uds' | 'canBase' | 'ipBase' | 'linBase' | 'someipBase' | 'osTrace'
     value: string[]
   }[]
 >([
@@ -899,6 +990,11 @@ const LogFilter = ref<
     label: 'SomeIP',
     v: 'someipBase',
     value: ['someipBase', 'someipError', 'someipServiceValid']
+  },
+  {
+    label: 'OS Trace',
+    v: 'osTrace',
+    value: ['osEvent', 'osError']
   }
 ])
 
@@ -945,8 +1041,52 @@ watch([isPaused, isOverwrite], (v) => {
       scrollY = -1
     }
   }
+  if (v[0]) {
+    //load data
+    grid.loadData(allLogData)
+    grid.scrollYTo(99999999999)
+  }
 })
 
+const trace = ref<TraceItem>(
+  cloneDeep(
+    database.traces[props.editIndex] || {
+      id: props.editIndex,
+      name: `Trace`,
+      filter: props.defaultCheckList,
+      filterDevice: [],
+      filterId: []
+    }
+  )
+)
+
+const layout = inject('layout') as Layout
+
+watch(
+  trace,
+  (newVal) => {
+    database.traces[props.editIndex] = newVal
+    layout.changeWinName(props.editIndex, newVal.name)
+  },
+  {
+    deep: true
+  }
+)
+
+onBeforeMount(() => {
+  if (trace.value.filter == undefined) {
+    trace.value.filter = props.defaultCheckList
+  }
+
+  if (trace.value.filterDevice == undefined) {
+    trace.value.filterDevice = []
+  }
+
+  if (trace.value.filterId == undefined) {
+    trace.value.filterId = []
+  }
+  layout.changeWinName(props.editIndex, trace.value.name)
+})
 onMounted(() => {
   timer = setInterval(() => {
     if (logData.length) {
@@ -955,7 +1095,7 @@ onMounted(() => {
     }
   }, 100)
 
-  for (const item of checkList.value) {
+  for (const item of trace.value.filter!) {
     const v = LogFilter.value.find((v) => v.v == item)
     if (v) {
       for (const val of v.value) {
@@ -972,6 +1112,7 @@ onMounted(() => {
       WIDTH: tableWidth.value,
       HEIGHT: tableHeight.value,
       DISABLED: true,
+      CELL_PADDING: 4,
       HEADER_HEIGHT: 28,
       CELL_HEIGHT: 28,
       ROW_KEY: 'key',
@@ -1029,6 +1170,14 @@ onMounted(() => {
           case 'ipBase':
           case 'someipBase':
             color = 'purple'
+            break
+          case 'osEvent':
+            color = 'rgb(108, 22, 133)'
+            break
+          case 'osError':
+            color = getComputedStyle(document.documentElement)
+              .getPropertyValue('--el-color-danger')
+              .trim()
             break
         }
         return {
@@ -1115,6 +1264,14 @@ onUnmounted(() => {
 
 .udsNegRecv {
   color: var(--el-color-warning);
+}
+
+.osEvent {
+  color: rgb(108, 22, 133);
+}
+
+.osError {
+  color: var(--el-color-danger);
 }
 
 .pause-active {

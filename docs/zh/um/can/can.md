@@ -27,6 +27,62 @@ SLCAN 是一种低成本的开源解决方案，其固件源自 [canable-fw](htt
 
 基于 usbfs 或 WinUSB WCID 的 Windows/Linux/Mac CAN 驱动程序，适用于 Geschwister Schneider USB/CAN 设备和 candleLight USB CAN 接口。
 
+### Linux gs_usb
+
+Linux 内核 3.7 以上是合并了 `gs_usb` 驱动
+查看是否启用 `gs_usb` 模块使用 
+
+```bash
+lsmod | grep gs_usb
+``` 
+
+如果没有加载可以使用 
+
+```bash
+sudo modprobe gs_usb
+```
+
+如果想移除的话可以用 
+
+```bash
+sudo rmmod gs_usb
+``` 
+
+配置开机自动加载
+
+```bash
+echo "gs_usb" | sudo tee /etc/modules-load.d/gs_usb.conf
+```
+
+非 root 权限用户使用需要添加对应的用户组
+
+使用 `devadm` 监听设备连接，来获取准确的设备路径：
+
+```bash
+sudo devadm monitor --property
+```
+
+检查设备所属组，假设是 `ttyUSB0`,以实际接入设备为准：
+
+```bash
+stat -c "%G" /dev/ttyUSB0
+```
+
+- Arch Linux：应返回 `uucp`
+
+```bash
+sudo usermod -aG uucp $USER
+newgrp uucp
+```
+
+- Debian/Ubuntu：应返回 `dialout`
+- Fedora/RHEL：应返回 `dialout`
+
+```bash
+sudo usermod -aG dialout $USER
+newgrp dialout
+```
+
 ## 设备配置
 
 出于演示目的，我们将使用一个模拟设备。您可以在设备设置中配置波特率和采样点。

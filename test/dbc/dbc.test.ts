@@ -128,6 +128,18 @@ describe('DBC Parser Tests', () => {
     updateSignalRaw(result.messages[Number(id)].signals['Binary32'])
     expect(result.messages[Number(id)].signals['Binary32'].physValue).toEqual(1.0)
     expect(getMessageData(result.messages[Number(id)])).toEqual(Buffer.from([0, 0, 0x80, 0x3f]))
+
+    const msg = result.messages[326]
+    expect(msg.name).toBe('ISGF_1')
+    writeMessageData(msg, Buffer.from([0xa0, 0x08, 0x7f, 0xff, 0x0, 0x3f, 0xc7, 0xf8]), result)
+    expect(msg.signals['ISGF_TorqMax_M146'].value).toBeDefined()
+
+    writeMessageData(msg, Buffer.from([0xb2, 0xab, 0xff, 0xff, 0xff, 0xff, 0xf7, 0xf8]), result)
+    expect(msg.signals['ISGF_TorqMax_M146'].value).toEqual(1023)
+    expect(msg.signals['ISGF_TorqMax_M146'].physValueEnum).toEqual('Invalid')
+
+    writeMessageData(msg, Buffer.from([0xa0, 0x08, 0x7f, 0xff, 0x0, 0x3f, 0xc7, 0xf8]), result)
+    expect(msg.signals['ISGF_TorqMax_M146'].value).toEqual(0)
   })
   test('dbc can1-vw-skoda-audi-uds-v2.5', () => {
     const result = parse(dbcContentVwSkodaAudi)

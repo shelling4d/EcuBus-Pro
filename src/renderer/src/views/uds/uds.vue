@@ -41,9 +41,48 @@
               <span>Stop</span>
             </div>
             <el-divider direction="vertical" style="height: 54px" />
-            <div class="grid girdenable" @click="handleSelect(['trace'])">
+            <div class="grid girdenable">
               <Icon :icon="logIcon" style="font-size: 24px" />
-              <span>Trace</span>
+              <el-dropdown @command="openTrace">
+                <span class="lr">
+                  Trace
+                  <el-icon class="el-icon--right">
+                    <arrow-down />
+                  </el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu size="small">
+                    <el-dropdown-item command="trace">
+                      <div
+                        style="display: flex; align-items: center; justify-content: space-between"
+                      >
+                        <span>{{ dataBase.traces['trace']?.name || 'Trace' }}</span>
+                        <el-divider direction="vertical" />
+
+                        <el-button link>
+                          <el-icon @click.stop="openTrace('addTrace')"
+                            ><CirclePlusFilled
+                          /></el-icon>
+                        </el-button>
+                      </div>
+                    </el-dropdown-item>
+                    <template v-for="(item, key) in dataBase.traces" :key="key">
+                      <el-dropdown-item v-if="key != 'trace'" :command="key">
+                        <div style="display: flex; align-items: center; width: 100%">
+                          {{ item.name || `Trace` }}
+                          <el-divider direction="vertical" />
+
+                          <el-button link type="danger">
+                            <el-icon @click.stop="openTrace('deletaTrace', key)"
+                              ><Delete
+                            /></el-icon>
+                          </el-button>
+                        </div>
+                      </el-dropdown-item>
+                    </template>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
             <el-divider direction="vertical" style="height: 54px" />
             <div class="grid girdenable">
@@ -85,7 +124,9 @@
                 </span>
                 <template #dropdown>
                   <el-dropdown-menu size="small">
-                    <el-dropdown-item command="panel" icon="Plus"> Add Panel</el-dropdown-item>
+                    <el-dropdown-item command="panel" icon="CirclePlusFilled">
+                      Add Panel</el-dropdown-item
+                    >
 
                     <el-dropdown-item
                       v-for="(item, index) in Object.values(dataBase.panels)"
@@ -280,6 +321,7 @@
             </div> -->
           </div>
         </el-tab-pane>
+
         <!-- <el-tab-pane label="">
         <template #label>
           <span class="lr">
@@ -316,8 +358,15 @@
                   <el-dropdown-menu size="small">
                     <!-- <el-dropdown-item v-for="item, key in dataBase.database" :command="key" :key="key">{{ item.name }}
                       </el-dropdown-item> -->
-                    <el-dropdown-item icon="Plus" command="addLin">Add Lin (LDF) </el-dropdown-item>
-                    <el-dropdown-item icon="Plus" command="addCan">Add CAN (DBC) </el-dropdown-item>
+                    <el-dropdown-item icon="CirclePlusFilled" command="addLin"
+                      >Add Lin (LDF)
+                    </el-dropdown-item>
+                    <el-dropdown-item icon="CirclePlusFilled" command="addCan"
+                      >Add CAN (DBC)
+                    </el-dropdown-item>
+                    <el-dropdown-item icon="CirclePlusFilled" command="addOrti"
+                      >Add OS (ORTI)
+                    </el-dropdown-item>
                     <el-dropdown-item
                       v-for="(item, index) in dataBaseList"
                       :key="item.url"
@@ -337,6 +386,34 @@
               <span>Variables</span>
             </div>
             <el-divider direction="vertical" style="height: 54px" />
+
+            <!-- <div class="grid girdenable">
+              <Icon :icon="osTraceIcon" style="font-size: 24px" />
+              <el-dropdown @command="openOsTrace">
+                <span class="lr">
+                  OS Trace
+                  <el-icon class="el-icon--right">
+                    <arrow-down />
+                  </el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu size="small">
+                    <el-dropdown-item
+                      v-for="(item, key) in dataBase.database.orti"
+                      :key="key"
+                      :command="key"
+                      >{{ item.name }}
+                    </el-dropdown-item>
+                    <el-dropdown-item
+                      v-if="Object.keys(dataBase.database.orti).length == 0"
+                      disabled
+                      >No ORTI File<br />Add In Database</el-dropdown-item
+                    >
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+            <el-divider direction="vertical" style="height: 54px" /> -->
             <div class="grid girdenable" @click="openApi()">
               <Icon :icon="apiIcon" style="font-size: 24px" />
               <span>Script Api</span>
@@ -676,6 +753,7 @@ import data from '@iconify/icons-ep/full-screen'
 import soaIcon from '@iconify/icons-material-symbols/linked-services-outline'
 import soaConfigIcon from '@iconify/icons-material-symbols/linked-services'
 import { useGlobalStart, useRuntimeStore } from '@r/stores/runtime'
+import osTraceIcon from '@iconify/icons-ph/crosshair-fill'
 
 const activeMenu = ref('')
 const pined = ref(true)
@@ -692,6 +770,35 @@ provide('udsView', udsView)
 
 function firstByteUpper(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1)
+}
+function openTrace(command: string, key?: string) {
+  if (command == 'trace') {
+    layoutMaster.addWin('trace', 'trace', {
+      params: {
+        'edit-index': 'trace'
+      }
+    })
+  } else if (command == 'addTrace') {
+    const id = v4()
+    dataBase.traces[id] = {
+      id: id,
+      name: `Trace${Object.keys(dataBase.traces).length + 1}`
+    }
+    layoutMaster.addWin('trace', id, {
+      params: {
+        'edit-index': id
+      }
+    })
+  } else if (command == 'deletaTrace') {
+    delete dataBase.traces[key!]
+    layoutMaster.removeWin(key!)
+  } else {
+    layoutMaster.addWin('trace', command, {
+      params: {
+        'edit-index': command
+      }
+    })
+  }
 }
 function openGraph(command: string) {
   if (command == 'graph') {
@@ -815,7 +922,8 @@ async function openDatabase(testerIndex: string) {
   // })
   const fileExtMap = {
     lin: 'ldf',
-    can: 'dbc'
+    can: 'dbc',
+    orti: 'orti'
   }
   if (testerIndex.startsWith('add')) {
     const type = testerIndex.split('add')[1].toLocaleLowerCase()
@@ -845,6 +953,14 @@ async function openDatabase(testerIndex: string) {
           dbcFile: file
         }
       })
+    } else if (type == 'orti') {
+      const id = v4()
+      layoutMaster.addWin('orti', `${id}`, {
+        params: {
+          'edit-index': id,
+          ortiFile: file
+        }
+      })
     }
   } else if (testerIndex.startsWith('LIN.')) {
     const name = testerIndex.split('.').slice(1).join('.')
@@ -871,6 +987,20 @@ async function openDatabase(testerIndex: string) {
             'edit-index': key
           }
         })
+      }
+    }
+  } else if (testerIndex.startsWith('ORTI.')) {
+    const name = testerIndex.split('.').slice(1).join('.')
+    //for orti
+    for (const key of Object.keys(dataBase.database.orti)) {
+      if (dataBase.database.orti[key].name == name) {
+        layoutMaster.addWin('orti', key, {
+          name: dataBase.database.orti[key].name,
+          params: {
+            'edit-index': key
+          }
+        })
+        break
       }
     }
   }
@@ -929,6 +1059,15 @@ function rearrangeWindows(windows: any[]) {
 
 function openApi() {
   window.electron.ipcRenderer.send('ipc-open-script-api')
+}
+
+function openOsTrace(index: string) {
+  layoutMaster.addWin('osTrace', `${index}_trace`, {
+    name: dataBase.database.orti[index].name,
+    params: {
+      'edit-index': `${index}_trace`
+    }
+  })
 }
 
 onMounted(() => {
@@ -1311,4 +1450,3 @@ watch([contentH, contentW], (val) => {
   color: var(--el-color-primary);
 }
 </style>
-

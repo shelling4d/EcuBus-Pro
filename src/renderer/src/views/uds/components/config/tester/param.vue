@@ -448,6 +448,12 @@ function saveParam(index: number, justValid: boolean) {
             }
           }
         }
+        if (ss.suppress) {
+          oldBuffer[0] = (0x80 | oldBuffer[0]) >>> 0
+        }
+        if (props.subFunction) {
+          newBuffer[0] = (0x80 | newBuffer[0]) >>> 0
+        }
 
         if (Buffer.compare(newBuffer, oldBuffer) == 0) {
           paramError.value['value'] =
