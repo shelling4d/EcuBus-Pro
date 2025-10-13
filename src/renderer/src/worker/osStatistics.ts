@@ -343,8 +343,10 @@ export default class OsStatistics {
           const partialExecTime = event.ts - task.currentExecutionStartTime
           task.currentExecutionAccumulated += partialExecTime
 
-          // 累加到对应核心的执行时间（包括空闲任务）
-          this.addCoreExecutionTime(event.coreId, partialExecTime)
+          // 累加到对应核心的执行时间（不包括空闲任务）
+          if (!this.idleTaskIds.has(key)) {
+            this.addCoreExecutionTime(event.coreId, partialExecTime)
+          }
 
           task.currentExecutionStartTime = undefined
         }
@@ -360,7 +362,10 @@ export default class OsStatistics {
           const partialExecTime = event.ts - task.currentExecutionStartTime
           task.currentExecutionAccumulated += partialExecTime
 
-          this.addCoreExecutionTime(event.coreId, partialExecTime)
+          // 累加到对应核心的执行时间（不包括空闲任务）
+          if (!this.idleTaskIds.has(key)) {
+            this.addCoreExecutionTime(event.coreId, partialExecTime)
+          }
 
           task.currentExecutionStartTime = undefined
         }
@@ -380,7 +385,10 @@ export default class OsStatistics {
           const partialExecTime = event.ts - task.currentExecutionStartTime
           task.currentExecutionAccumulated += partialExecTime
 
-          this.addCoreExecutionTime(event.coreId, partialExecTime)
+          // 累加到对应核心的执行时间（不包括空闲任务）
+          if (!this.idleTaskIds.has(key)) {
+            this.addCoreExecutionTime(event.coreId, partialExecTime)
+          }
 
           task.currentExecutionStartTime = undefined
         }
@@ -430,7 +438,7 @@ export default class OsStatistics {
 
     const avgJitter =
       avgActivationInterval > 0
-        ? ((avgStartInterval - avgActivationInterval) / avgActivationInterval) * 100
+        ? (Math.abs(avgStartInterval - avgActivationInterval) / avgActivationInterval) * 100
         : 0
 
     const delayStats = this.formatTimeStats(
@@ -528,11 +536,12 @@ export default class OsStatistics {
       value: { value: task.startCount, rawValue: task.startCount }
     })
     //Task实际运行次数与被激活次数的百分比Running\ Active
-    const runningRate = task.activeCount > 0 ? (task.startCount / task.activeCount) * 100 : 0
+    const TaskLost =
+      task.activeCount > 0 ? ((task.activeCount - task.startCount) / task.activeCount) * 100 : 0
 
     result.push({
-      id: `OsTrace.${key}.RunningRate`,
-      value: { value: Number(runningRate.toFixed(2)), rawValue: runningRate }
+      id: `OsTrace.${key}.TaskLost`,
+      value: { value: Number(TaskLost.toFixed(2)), rawValue: TaskLost }
     })
     result.push({
       id: `OsTrace.${key}.Jitter`,
@@ -563,8 +572,10 @@ export default class OsStatistics {
           const partialExecTime = event.ts - runningTask.currentExecutionStartTime
           runningTask.currentExecutionAccumulated += partialExecTime
 
-          // Add to core execution time (only task execution time, not ISR)
-          this.addCoreExecutionTime(event.coreId, partialExecTime)
+          // Add to core execution time (不包括空闲任务)
+          if (!this.idleTaskIds.has(runningTaskKey)) {
+            this.addCoreExecutionTime(event.coreId, partialExecTime)
+          }
 
           // Clear the start time to indicate task is paused
           runningTask.currentExecutionStartTime = undefined
@@ -792,7 +803,7 @@ export default class OsStatistics {
 
     if (totalTime <= 0) return result
 
-    // 更新每个核心的负载统计
+    // 更新每个核心的负载统计（不包括空闲任务的执行时间）
     const execTime = this.coreExecutionTime.get(coreId) || 0
     const loadPercent = (execTime / totalTime) * 100
 

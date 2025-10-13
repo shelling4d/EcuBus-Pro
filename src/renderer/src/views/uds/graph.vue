@@ -240,7 +240,7 @@ function handleCheckChange(
   if (checked) {
     window.logBus.on(data.id, dataUpdate)
   } else {
-    window.logBus.detach(data.id, dataUpdate)
+    window.logBus.off(data.id, dataUpdate)
   }
 }
 
@@ -268,8 +268,9 @@ const handleEditSave = (updatedNode: GraphNode<GraphBindSignalValue, LineSeriesO
     // 更新图表配置
     chartInstances[updatedNode.id].setOption({
       tooltip: {
-        show: globalStart.value ? false : (updatedNode.tooltip?.show ?? true)
+        show: getShowTooTip(updatedNode.id, updatedNode.tooltip?.show)
       },
+      name: updatedNode.name,
       yAxis: {
         ...updatedNode.yAxis,
         // 更新轴标签颜色
@@ -286,7 +287,8 @@ const handleEditSave = (updatedNode: GraphNode<GraphBindSignalValue, LineSeriesO
         },
         itemStyle: {
           color: updatedNode.color
-        }
+        },
+        showSymbol: getShowSymbol(updatedNode.id, updatedNode.series?.showSymbol)
       }
     })
 
@@ -315,7 +317,6 @@ const updateTime = () => {
   }
   // 更新x轴范围
   let maxX = 5
-  let minX = 0
   Object.values(chartDataCache).forEach((v) => {
     const lastOne = v[v.length - 1]
     if (lastOne) {
@@ -324,29 +325,34 @@ const updateTime = () => {
         maxX = val
       }
     }
-    // 获取每个图表数据的最小x值
-    const firstOne = v[0]
-    if (firstOne) {
-      const val = firstOne[0] as number
-      if (val < minX || minX === 0) {
-        minX = val
-      }
-    }
   })
+
   const ts = (Date.now() - window.startTime) / 1000
   if (ts > maxX) {
     maxX = ts
   }
 
   time.value = maxX
-  maxX = Math.ceil(maxX) + 5
-  minX = Math.floor(minX)
+
+  // 实现10秒滑动窗口：当时间超过10秒时，只显示最近10秒
+  const WINDOW_SIZE = 10 // 10秒窗口
+  let minX = 0
+  let displayMaxX = maxX
+
+  if (maxX > WINDOW_SIZE) {
+    maxX = Math.floor(maxX)
+    minX = maxX - WINDOW_SIZE
+    displayMaxX = maxX
+  } else {
+    minX = 0
+    displayMaxX = WINDOW_SIZE
+  }
 
   enabledCharts.value.forEach((c) => {
     chartInstances[c.id].setOption({
       xAxis: {
         min: minX,
-        max: maxX
+        max: displayMaxX + 5
       }
     })
   })
@@ -356,19 +362,21 @@ watch(globalStart, (val) => {
     //clear cache
     Object.keys(chartDataCache).forEach((key) => {
       chartDataCache[key] = []
+      chartTimeIndex[key] = new Map()
     })
     //clear all charts data and set start to 0
     enabledCharts.value.forEach((c) => {
       chartInstances[c.id].setOption({
         series: {
-          data: []
+          data: [],
+          showSymbol: getShowSymbol(c.id)
         },
         xAxis: {
           min: 0,
           max: 10
         },
         tooltip: {
-          show: val ? false : (graphs[c.id].tooltip?.show ?? true)
+          show: getShowTooTip(c.id)
         }
       })
     })
@@ -377,18 +385,82 @@ watch(globalStart, (val) => {
     }
     timer = setInterval(updateTime, 500)
   } else {
+    enabledCharts.value.forEach((c) => {
+      chartInstances[c.id].setOption({
+        tooltip: {
+          show: getShowTooTip(c.id)
+        },
+        series: {
+          showSymbol: getShowSymbol(c.id)
+        }
+      })
+    })
     clearInterval(timer)
   }
 })
 
+const getShowTooTip = (id: string, val?: boolean) => {
+  if (val == undefined) {
+    val = graphs[id].tooltip?.show
+  }
+  if (val) {
+    if (isPaused.value) {
+      return true
+    } else if (!globalStart.value) {
+      return true
+    } else {
+      return false
+    }
+  } else {
+    return false
+  }
+}
+const getShowSymbol = (id: string, val?: boolean) => {
+  if (val == undefined) {
+    val = graphs[id].series?.showSymbol
+  }
+  if (val) {
+    if (isPaused.value) {
+      return true
+    } else if (!globalStart.value) {
+      return true
+    } else {
+      return false
+    }
+  } else {
+    return false
+  }
+}
+watch(isPaused, (val) => {
+  enabledCharts.value.forEach((c) => {
+    chartInstances[c.id].setOption({
+      tooltip: {
+        show: getShowTooTip(c.id)
+      },
+      series: {
+        showSymbol: getShowSymbol(c.id)
+      }
+    })
+  })
+})
+
 // 添加数据缓存
 const chartDataCache: Record<string, (number | string)[][]> = {}
+// 时间索引缓存：key为图表ID，value为时间桶到数据索引的映射
+// 时间桶粒度为100ms，例如：时间0.15s对应桶1 (Math.floor(0.15/0.1))
+const TIME_BUCKET_SIZE = 0.1 // 100ms
+const chartTimeIndex: Record<string, Map<number, number>> = {}
 
-function dataUpdate(key: string, datas: [number, { value: number | string; rawValue: number }][]) {
+function dataUpdate({
+  key,
+  values
+}: {
+  key: string
+  values: [number, { value: number | string; rawValue: number }][]
+}) {
   if (isPaused.value) {
     return
   }
-  console.log(key, datas)
 
   // 获取对应的echarts实例
   const chart = chartInstances[key]
@@ -397,16 +469,81 @@ function dataUpdate(key: string, datas: [number, { value: number | string; rawVa
   // 初始化或获取缓存数据
   if (!chartDataCache[key]) {
     chartDataCache[key] = []
+    chartTimeIndex[key] = new Map()
   }
 
-  // 添加新数据， 添加第一个的number，第二个Object里的value
-  chartDataCache[key] = chartDataCache[key].concat(
-    datas.map((v) => [v[0], typeof v[1].value === 'number' ? v[1].value : v[1].rawValue])
-  )
+  // 添加新数据并更新时间索引
+  const startIndex = chartDataCache[key].length
+  const newData = values.map((v) => [
+    v[0],
+    typeof v[1].value === 'number' ? v[1].value : v[1].rawValue
+  ])
 
-  // 如果数据超过1000个点，移除最早的数据
-  if (chartDataCache[key].length > 1000) {
-    chartDataCache[key].splice(0, chartDataCache[key].length - 1000)
+  // 更新时间索引：记录每个时间桶的第一个数据索引
+  newData.forEach((point, i) => {
+    const timeBucket = Math.floor((point[0] as number) / TIME_BUCKET_SIZE)
+    if (!chartTimeIndex[key].has(timeBucket)) {
+      chartTimeIndex[key].set(timeBucket, startIndex + i)
+    }
+  })
+
+  chartDataCache[key] = chartDataCache[key].concat(newData)
+
+  // 性能优化：只有当数据量超过阈值时才进行清理，避免频繁操作
+  const MAX_POINTS = 2000 // 最大保留点数
+  if (chartDataCache[key].length > MAX_POINTS) {
+    // 获取当前x轴的最小值，删除所有小于 (minX - bufferTime) 的数据点
+    const currentOption = chart.getOption() as any
+    const xAxis = currentOption.xAxis?.[0]
+    if (xAxis && xAxis.min !== undefined) {
+      const bufferTime = 5
+      const minX = xAxis.min - bufferTime
+
+      // 使用时间索引快速定位删除位置 O(1)
+      const targetBucket = Math.floor(minX / TIME_BUCKET_SIZE)
+      let firstValidIndex = -1
+
+      // 从目标桶开始向后查找第一个有效的索引
+      for (let bucket = targetBucket; bucket <= targetBucket + 10; bucket++) {
+        if (chartTimeIndex[key].has(bucket)) {
+          firstValidIndex = chartTimeIndex[key].get(bucket)!
+          break
+        }
+      }
+
+      if (firstValidIndex > 0) {
+        // 删除数据
+        chartDataCache[key].splice(0, firstValidIndex)
+
+        // 清理失效的时间索引桶，并更新剩余索引
+        const bucketsToDelete: number[] = []
+        chartTimeIndex[key].forEach((index, bucket) => {
+          if (index < firstValidIndex) {
+            bucketsToDelete.push(bucket)
+          } else {
+            chartTimeIndex[key].set(bucket, index - firstValidIndex)
+          }
+        })
+        bucketsToDelete.forEach((bucket) => chartTimeIndex[key].delete(bucket))
+      }
+    } else {
+      // 如果无法获取x轴信息，则保留最新的1500个点
+      const deleteCount = chartDataCache[key].length - 1500
+      if (deleteCount > 0) {
+        chartDataCache[key].splice(0, deleteCount)
+
+        // 更新时间索引
+        const bucketsToDelete: number[] = []
+        chartTimeIndex[key].forEach((index, bucket) => {
+          if (index < deleteCount) {
+            bucketsToDelete.push(bucket)
+          } else {
+            chartTimeIndex[key].set(bucket, index - deleteCount)
+          }
+        })
+        bucketsToDelete.forEach((bucket) => chartTimeIndex[key].delete(bucket))
+      }
+    }
   }
 
   // 更新图表
@@ -644,19 +781,7 @@ const getChartOption = (
     tooltip: {
       show: globalStart.value ? false : (chart.tooltip?.show ?? true),
       formatter: (params: any) => {
-        if (Array.isArray(params)) {
-          const param = params[0]
-          if (param && param.data) {
-            let value = param.data[1]
-            if (chart.bindValue.stringRange) {
-              const stringVal = chart.bindValue.stringRange.find((v) => v.value == value)
-              if (stringVal) {
-                value = stringVal.name
-              }
-            }
-            return `${param.seriesName}<br/>Time: ${param.data[0]}s<br/>Value: ${typeof value === 'number' ? value.toFixed(2) : value}${chart.yAxis?.unit ?? ''}`
-          }
-        } else if (params && params.data) {
+        if (params && params.data) {
           let value = params.data[1]
           if (chart.bindValue.stringRange) {
             const stringVal = chart.bindValue.stringRange.find((v) => v.value == value)
@@ -664,7 +789,7 @@ const getChartOption = (
               value = stringVal.name
             }
           }
-          return `${params.seriesName}<br/>Time: ${params.data[0].toFixed(2)}s<br/>Value: ${typeof value === 'number' ? value.toFixed(2) : value}${chart.yAxis?.unit ?? ''}`
+          return `Time: ${params.data[0] * 1000}ms<br/>Value: ${typeof value === 'number' ? value.toFixed(2) : value}`
         }
         return ''
       }
@@ -777,7 +902,8 @@ const getChartOption = (
         type: 'line',
         triggerLineEvent: true,
         showSymbol: false,
-
+        large: true,
+        sampling: 'lttb',
         itemStyle: {
           color: chart.color
         },
@@ -884,13 +1010,14 @@ onUnmounted(() => {
     instance.off('mouseup')
     instance.dispose()
   })
-  // 清理数据缓存
+  // 清理数据缓存和时间索引
   Object.keys(chartDataCache).forEach((key) => {
     delete chartDataCache[key]
+    delete chartTimeIndex[key]
   })
   //detach
   filteredTreeData.value.forEach((key) => {
-    window.logBus.detach(key.id, dataUpdate)
+    window.logBus.off(key.id, dataUpdate)
   })
 })
 
@@ -943,12 +1070,13 @@ const handleDelete = (data: GraphNode<GraphBindSignalValue>, event: Event) => {
     chartInstances[data.id].dispose()
     delete chartInstances[data.id]
   }
-  // 删除数据缓存
+  // 删除数据缓存和时间索引
   delete chartDataCache[data.id]
+  delete chartTimeIndex[data.id]
 
   filteredTreeData.value.splice(index, 1)
   delete graphs[data.id]
-  window.logBus.detach(data.id, dataUpdate)
+  window.logBus.off(data.id, dataUpdate)
 }
 </script>
 <style scoped>

@@ -28,7 +28,7 @@ export default class TraceItem {
   private offsetTs?: number
   private eventQueue: Array<{ osEvent: OsEvent; realTs: number }> = []
   private timer?: NodeJS.Timeout
-
+  private cnt = 0
   constructor(
     public orti: ORTIFile,
     projectPath: string
@@ -143,7 +143,8 @@ export default class TraceItem {
 
       // Parse the block
       const currentIndex32 = block.readUInt32BE(0)
-      const timestamp32 = block.readUInt32BE(4) / this.orti.cpuFreq
+      const rawTimestamp32 = block.readUInt32BE(4)
+      const timestamp32 = rawTimestamp32 / this.orti.cpuFreq
       const type = block.readUInt8(8)
       const typeId = block.readUInt16BE(9)
       const typeStatus = block.readUInt16BE(11)
@@ -155,13 +156,14 @@ export default class TraceItem {
 
       // Check CRC
       if (calculatedCRC !== receivedCRC) {
-        console.error(
-          `CRC mismatch! Expected: ${calculatedCRC}, Received: ${receivedCRC}, Index: ${currentIndex32}`
-        )
         this.log.error(
           ts,
           `CRC mismatch! Expected: ${calculatedCRC}, Received: ${receivedCRC}, Index: ${currentIndex32}`
         )
+
+        // Skip this entire frame and search for next frame header
+        this.leftBuffer = this.leftBuffer.subarray(FRAME_LENGTH)
+
         continue
       }
 
@@ -189,6 +191,7 @@ export default class TraceItem {
 
       // Convert to OsEvent using unified structure
       const realTs = this.getRealTs(timestamp32)
+      const rawTs = this.getRealTs(rawTimestamp32)
       const osEvent: OsEvent = {
         index: currentIndex32,
         database: this.orti.id,
@@ -196,13 +199,13 @@ export default class TraceItem {
         id: typeId,
         status: typeStatus,
         coreId: coreID,
-        ts: realTs,
+        ts: rawTs,
         comment: ''
       }
       if (this.offsetTs == undefined) {
         this.offsetTs = realTs - ts
       }
-
+      this.cnt++
       // For file sources, add to queue; for serial port, emit immediately
       if (this.file) {
         this.eventQueue.push({ osEvent, realTs })
@@ -246,17 +249,18 @@ export default class TraceItem {
         ts: parseInt(timestamp),
         comment: ''
       }
+      const realTs = osEvent.ts / this.orti.cpuFreq
       if (this.offsetTs == undefined) {
-        this.offsetTs = osEvent.ts - ts
+        this.offsetTs = realTs - ts
       }
 
       this.index++
 
       // For file sources, add to queue; otherwise emit immediately
       if (this.file) {
-        this.eventQueue.push({ osEvent, realTs: osEvent.ts })
+        this.eventQueue.push({ osEvent, realTs: realTs })
       } else {
-        this.log.osEvent(osEvent.ts - this.offsetTs, osEvent)
+        this.log.osEvent(realTs - this.offsetTs, osEvent)
       }
     }
   }
