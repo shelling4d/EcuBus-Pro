@@ -176,7 +176,7 @@ import editIcon from '@iconify/icons-material-symbols/edit-outline'
 import zoomInIcon from '@iconify/icons-material-symbols/zoom-in'
 import dragVerticalIcon from '@iconify/icons-material-symbols/drag-pan'
 import waveIcon from '@iconify/icons-material-symbols/airwave-rounded'
-import { ref, onMounted, computed, h, onUnmounted, watch, nextTick } from 'vue'
+import { ref, onMounted, computed, h, onUnmounted, watch, nextTick, inject } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useDataStore } from '@r/stores/data'
 import { GraphBindSignalValue, GraphBindVariableValue, GraphNode } from 'src/preload/data'
@@ -191,6 +191,7 @@ import addVar from './components/addVar.vue'
 import editSignal from './components/editSignal.vue'
 import { LineSeriesOption } from 'echarts'
 import { useGlobalStart } from '@r/stores/runtime'
+import { Layout } from './layout'
 
 use([LineChart, GridComponent, DataZoomComponent, CanvasRenderer])
 
@@ -450,7 +451,7 @@ const chartDataCache: Record<string, (number | string)[][]> = {}
 // 时间桶粒度为100ms，例如：时间0.15s对应桶1 (Math.floor(0.15/0.1))
 const TIME_BUCKET_SIZE = 0.1 // 100ms
 const chartTimeIndex: Record<string, Map<number, number>> = {}
-
+const layout = inject('layout') as Layout
 function dataUpdate({
   key,
   values
@@ -574,7 +575,16 @@ const isDragging = ref(false)
 const isZoomY = ref(false)
 const inYArea = ref(false)
 let timer
-
+const maxYAxisLength = ref(80)
+watch(maxYAxisLength, (newVal) => {
+  enabledCharts.value.forEach((c) => {
+    chartInstances[c.id].setOption({
+      grid: {
+        left: newVal + 'px'
+      }
+    })
+  })
+})
 // 修改初始化图表实例函数
 const initChart = (chartId: string) => {
   const dom = document.getElementById(`chart-${props.editIndex}-${chartId}`)
@@ -761,12 +771,20 @@ const updateChartOption = (chartId: string) => {
   }
 }
 
-// 监听图表容器大小变化
-watch([() => canvasWidth.value, () => height.value, enabledCharts], () => {
+function reszie(q?: any) {
+  if (q && q.id != props.editIndex) {
+    return
+  }
   nextTick(() => {
     Object.values(chartInstances).forEach((instance) => {
       instance.resize()
     })
+  })
+}
+// 监听图表容器大小变化
+watch([() => canvasWidth.value, () => height.value, enabledCharts], () => {
+  nextTick(() => {
+    reszie()
   })
 })
 
@@ -801,11 +819,12 @@ const getChartOption = (
         height: 20,
         bottom: 10,
         showDetail: true,
-        showDataShadow: false
+        showDataShadow: false,
+        filter: 'weakFilter'
       }
     ],
     grid: {
-      left: '80px', // 增加左边距，为标题留出空间
+      left: maxYAxisLength.value + 'px',
       right: '20px',
       top: isFirst ? '20px' : '10px',
       bottom: isLast ? '45px' : '4px',
@@ -864,9 +883,19 @@ const getChartOption = (
         fontSize: 10,
         show: true,
         formatter: (value: number) => {
+          const getWidth = (label: string) => {
+            const rect = echarts.format.getTextRect(label, '10px')
+            return Math.ceil(rect.width + 40)
+          }
+
           if (chart.bindValue.stringRange) {
             const val = chart.bindValue.stringRange.find((v) => v.value == value)?.name
             if (val) {
+              const w = getWidth(val)
+
+              if (w > maxYAxisLength.value) {
+                maxYAxisLength.value = w
+              }
               return val
             }
           }
@@ -876,13 +905,15 @@ const getChartOption = (
           if (val.length > 6) {
             val = value.toExponential()
           }
-          if (val.length > 6) {
-            return ''
-          }
           if (val.length > 0) {
-            return val + (chart.yAxis?.unit ?? '')
+            val = val + (chart.yAxis?.unit ?? '')
           }
-          return ''
+          const w = getWidth(val)
+
+          if (w > maxYAxisLength.value) {
+            maxYAxisLength.value = w
+          }
+          return val
         }
       },
       name: chart.name,
@@ -955,6 +986,7 @@ onMounted(() => {
   if (globalStart.value) {
     timer = setInterval(updateTime, 500)
   }
+  layout.on('show', reszie)
 })
 
 // 监听启用图表的变化
@@ -983,6 +1015,11 @@ watch(
           grid: {
             top: isFirst ? '20px' : '10px',
             bottom: isLast ? '45px' : '4px'
+          },
+          xAxis: {
+            axisLabel: {
+              show: isLast
+            }
           },
           dataZoom: [
             {
@@ -1019,6 +1056,7 @@ onUnmounted(() => {
   filteredTreeData.value.forEach((key) => {
     window.logBus.off(key.id, dataUpdate)
   })
+  layout.off('show', reszie)
 })
 
 const signalDialogVisible = ref(false)
@@ -1077,6 +1115,18 @@ const handleDelete = (data: GraphNode<GraphBindSignalValue>, event: Event) => {
   filteredTreeData.value.splice(index, 1)
   delete graphs[data.id]
   window.logBus.off(data.id, dataUpdate)
+
+  //update 底部x轴刻度显示, 只有last 才显示
+  enabledCharts.value.forEach((c, dd) => {
+    const chart = chartInstances[c.id]
+    chart.setOption({
+      xAxis: {
+        axisLabel: {
+          show: dd === enabledCharts.value.length - 1
+        }
+      }
+    })
+  })
 }
 </script>
 <style scoped>

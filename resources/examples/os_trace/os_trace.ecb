@@ -1798,132 +1798,6 @@
       }
     },
     "graphs": {
-      "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_1_0.Status": {
-        "type": "variable",
-        "enable": true,
-        "id": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_1_0.Status",
-        "name": "Status_20ms",
-        "color": "#de3ac7",
-        "yAxis": {
-          "min": -5.4443857700886,
-          "max": 9.732912604386028,
-          "splitLine": {
-            "show": false
-          }
-        },
-        "bindValue": {
-          "variableId": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_1_0.Status",
-          "variableType": "system",
-          "variableName": "Status",
-          "variableFullName": "OsTrace.Os_Trace.Task.OsTask_20ms.Status",
-          "variableValueType": "number",
-          "stringRange": [
-            {
-              "name": "Active",
-              "value": 0
-            },
-            {
-              "name": "Start",
-              "value": 1
-            },
-            {
-              "name": "Suspended",
-              "value": 2
-            },
-            {
-              "name": "Release",
-              "value": 3
-            },
-            {
-              "name": "Preempt",
-              "value": 4
-            },
-            {
-              "name": "Terminate",
-              "value": 5
-            }
-          ]
-        },
-        "graph": {
-          "id": "graph"
-        },
-        "xAxis": {
-          "splitLine": {
-            "show": false,
-            "lineStyle": {
-              "type": "dashed"
-            }
-          },
-          "axisPointer": {
-            "show": false
-          }
-        },
-        "disZoom": false,
-        "tooltip": {
-          "show": true
-        },
-        "series": {
-          "step": "end",
-          "showSymbol": true,
-          "symbolSize": 6,
-          "symbol": "circle"
-        }
-      },
-      "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.ISR.1_0_0.Status": {
-        "type": "variable",
-        "enable": true,
-        "id": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.ISR.1_0_0.Status",
-        "name": "Status_SysTick",
-        "color": "#37a0e1",
-        "yAxis": {
-          "min": -1.3032160000000008,
-          "max": 2.5383839999999998,
-          "splitLine": {
-            "show": false
-          }
-        },
-        "bindValue": {
-          "variableId": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.ISR.1_0_0.Status",
-          "variableType": "system",
-          "variableName": "Status",
-          "variableFullName": "OsTrace.Os_Trace.ISR.SYS_TIMER_CORE0.Status",
-          "variableValueType": "number",
-          "stringRange": [
-            {
-              "name": "Start",
-              "value": 0
-            },
-            {
-              "name": "Stop",
-              "value": 1
-            }
-          ]
-        },
-        "graph": {
-          "id": "graph"
-        },
-        "xAxis": {
-          "splitLine": {
-            "show": false,
-            "lineStyle": {
-              "type": "dashed"
-            }
-          },
-          "axisPointer": {
-            "show": false
-          }
-        },
-        "disZoom": false,
-        "tooltip": {
-          "show": true
-        },
-        "series": {
-          "step": "end",
-          "showSymbol": true,
-          "symbolSize": 6,
-          "symbol": "circle"
-        }
-      },
       "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_0_0.Status": {
         "type": "variable",
         "enable": true,
@@ -1996,93 +1870,30 @@
           "symbol": "circle"
         }
       },
-      "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_7_0.Status": {
+      "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.ISR.1_0_0.Status": {
         "type": "variable",
         "enable": true,
-        "id": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_7_0.Status",
+        "id": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.ISR.1_0_0.Status",
         "name": "Status",
-        "color": "#5e6a33",
+        "color": "#b41839",
         "yAxis": {
           "min": 0,
-          "max": 5
+          "max": 1
         },
         "bindValue": {
-          "variableId": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_7_0.Status",
+          "variableId": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.ISR.1_0_0.Status",
           "variableType": "system",
           "variableName": "Status",
-          "variableFullName": "OsTrace.Os_Trace.Task.OsTask_Rand1.Status",
+          "variableFullName": "OsTrace.Os_Trace.ISR.SYS_TIMER_CORE0.Status",
           "variableValueType": "number",
           "stringRange": [
             {
-              "name": "Active",
+              "name": "Start",
               "value": 0
             },
             {
-              "name": "Start",
+              "name": "Stop",
               "value": 1
-            },
-            {
-              "name": "Suspended",
-              "value": 2
-            },
-            {
-              "name": "Release",
-              "value": 3
-            },
-            {
-              "name": "Preempt",
-              "value": 4
-            },
-            {
-              "name": "Terminate",
-              "value": 5
-            }
-          ]
-        },
-        "graph": {
-          "id": "graph"
-        }
-      },
-      "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_8_0.Status": {
-        "type": "variable",
-        "enable": true,
-        "id": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_8_0.Status",
-        "name": "Status",
-        "color": "#222e3d",
-        "yAxis": {
-          "min": 0,
-          "max": 5
-        },
-        "bindValue": {
-          "variableId": "OsTrace.1712396f-dfa8-4dd7-82bb-c046ae3b927d.Task.0_8_0.Status",
-          "variableType": "system",
-          "variableName": "Status",
-          "variableFullName": "OsTrace.Os_Trace.Task.OsTask_Rand2.Status",
-          "variableValueType": "number",
-          "stringRange": [
-            {
-              "name": "Active",
-              "value": 0
-            },
-            {
-              "name": "Start",
-              "value": 1
-            },
-            {
-              "name": "Suspended",
-              "value": 2
-            },
-            {
-              "name": "Release",
-              "value": 3
-            },
-            {
-              "name": "Preempt",
-              "value": 4
-            },
-            {
-              "name": "Terminate",
-              "value": 5
             }
           ]
         },
@@ -2604,7 +2415,7 @@
           "x": 383,
           "y": 219,
           "w": 2562,
-          "h": 121
+          "h": 100
         },
         "options": {
           "params": {}
@@ -2615,54 +2426,37 @@
         "layoutType": "bottom",
         "hide": true
       },
-      "trace": {
-        "pos": {
-          "x": 72.5,
-          "y": 63,
-          "w": 1046,
-          "h": 582
-        },
-        "title": "trace",
-        "label": "Trace",
-        "id": "trace",
-        "options": {
-          "params": {
-            "edit-index": "trace"
-          },
-          "name": "Trace"
-        },
-        "hide": true
-      },
-      "datas": {
+      "1712396f-dfa8-4dd7-82bb-c046ae3b927d_trace": {
         "pos": {
           "x": 0,
-          "y": -28,
-          "w": 1722,
-          "h": 782
+          "y": 0,
+          "w": 2560,
+          "h": 556
         },
-        "title": "datas",
-        "label": "Datas",
-        "id": "datas",
+        "title": "osTrace",
+        "label": "OSTrace",
+        "id": "1712396f-dfa8-4dd7-82bb-c046ae3b927d_trace",
         "options": {
           "params": {
-            "edit-index": "datas"
-          }
+            "edit-index": "1712396f-dfa8-4dd7-82bb-c046ae3b927d_trace"
+          },
+          "name": "Os_Trace"
         },
         "hide": false,
         "backupPos": {
-          "x": 153.5,
+          "x": 0,
           "y": 0,
-          "w": 1046,
-          "h": 671
+          "w": 2560,
+          "h": 556
         },
-        "isMax": true
+        "isMax": false
       },
       "graph": {
         "pos": {
-          "x": 759.5,
-          "y": 22,
-          "w": 1031,
-          "h": 584
+          "x": 291,
+          "y": 556,
+          "w": 2269,
+          "h": 577
         },
         "title": "graph",
         "label": "Line",
@@ -2672,11 +2466,24 @@
             "edit-index": "graph"
           }
         },
+        "hide": false
+      },
+      "variable": {
+        "pos": {
+          "x": 980,
+          "y": 356,
+          "w": 600,
+          "h": 400
+        },
+        "title": "variable",
+        "label": "Variable",
+        "id": "variable",
+        "options": {},
         "hide": true,
         "backupPos": {
-          "x": 540.5,
-          "y": 14.5,
-          "w": 747,
+          "x": 980,
+          "y": 356,
+          "w": 600,
           "h": 400
         },
         "isMax": false
